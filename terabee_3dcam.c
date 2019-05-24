@@ -18,7 +18,7 @@ static void usage (char *cmd)
 {
 	printf ("%s [options] \n", cmd);
 	printf ("Options:\n");
-	printf ("  -l <layer>: choose layer: 0=depth (default), 1=intensity\n");
+	printf ("  -c <channel>: choose channel: 0=depth (default), 1=intensity\n");
 }
 
 static void version () 
@@ -33,7 +33,7 @@ int main (int argc, char **argv) {
 
 
 	// 0=depth, 1=intensity
-	int layer = 0;
+	int channel = 0;
 
 	int max = 0;
 
@@ -46,7 +46,7 @@ int main (int argc, char **argv) {
 		switch(c) {
 
 			case 'l':
-				layer = atoi (optarg);
+				channel = atoi (optarg);
 				break;
 
 			case 'd':
@@ -71,7 +71,7 @@ int main (int argc, char **argv) {
 	}
 
 
-	if (layer == 0) {
+	if (channel == 0) {
 		fprintf (stdout, "P5 80 60 4095\n");
 	} else {
 		fprintf (stdout, "P5 80 60 65535\n");
@@ -83,7 +83,7 @@ int main (int argc, char **argv) {
 
 		//v &= 0x0fffffff;
 
-		if (layer == 0) {
+		if (channel == 0) {
 			v >>= 16;
 		} else {
 			v &= 0xffff;
