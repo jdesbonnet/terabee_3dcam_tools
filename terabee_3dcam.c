@@ -16,10 +16,9 @@
  */ 
 static void usage (char *cmd) 
 {
-	printf ("%s [options] <spi-device>\n", cmd);
+	printf ("%s [options] \n", cmd);
 	printf ("Options:\n");
-	printf ("  -a <freq>: set anti-alias filter cutoff frequency (Hz).\n");
-	printf ("        Allowed values: 800, 400, 200, 50\n");
+	printf ("  -l <layer>: choose layer: 0=depth (default), 1=intensity\n");
 }
 
 static void version () 
@@ -33,13 +32,22 @@ int main (int argc, char **argv) {
 	int debug_level;
 
 
+	// 0=depth, 1=intensity
+	int layer = 0;
+
+	int max = 0;
+
+
 	int fd;
 
 	// Parse command line arguments. See usage() for details.
 	int c;
-	while ((c = getopt(argc, argv, "b:d:f:g:hio:qs:tv")) != -1) {
+	while ((c = getopt(argc, argv, "b:d:f:g:hil:o:qs:tv")) != -1) {
 		switch(c) {
 
+			case 'l':
+				layer = atoi (optarg);
+				break;
 
 			case 'd':
 				debug_level = atoi (optarg);
@@ -63,30 +71,32 @@ int main (int argc, char **argv) {
 	}
 
 
-
-
-
-	fprintf (stdout, "P5 80 60 255\n");
-
-	int i = 0;
+	if (layer == 0) {
+		fprintf (stdout, "P5 80 60 4095\n");
+	} else {
+		fprintf (stdout, "P5 80 60 65535\n");
+	}
 
 	while (!feof(stdin)) {
 
 		fread (&v, sizeof v, 1, stdin);
 
-		//v = __builtin_bswap32 (v);
-		v &= 0x0fffffff;
-		//fprintf (stdout, "%02x ", v);
+		//v &= 0x0fffffff;
 
-		v &= 0xff;
-
-		fputc (v,stdout);
-
-		i++;
-
-		if (i%80 == 0) {
-			//fprintf(stdout,"\n");
+		if (layer == 0) {
+			v >>= 16;
+		} else {
+			v &= 0xffff;
 		}
 
+		if (v>max) {
+			max = v;
+		}
+
+		fputc (v>>8,stdout);
+		fputc (v&0xff,stdout);
+
 	}
+
+	fprintf (stderr, "max=%d\n", max);
 }
