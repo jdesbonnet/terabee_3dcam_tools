@@ -12,3 +12,12 @@ Extract frames:
 ```
 ffmpeg -i myfile.avi -f image2 image-%05d.raw
 ```
+
+Make a PGM (gray map):
+
+```
+./terabee_3dcam < ../image-0001.raw  > 3d.pgm
+```
+
+Question: how to flip between close range mode (0.2 - 1.2m) and standard mode (1-4m)?
+
