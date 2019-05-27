@@ -1,14 +1,19 @@
+/**
+ *
+ * Convert terabee 3dcam raw frames into a depth map.
+ * Joe Desbonnet 23 May 2019.
+ */
+
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
 
-/**
- *
- * Convert terabee 3dcam raw frames into a depth map.
- * Joe Desbonnet 23 May 2019.
- */
+
+#define WIDTH 80
+#define HEIGHT 60
 
 
 /**
@@ -19,6 +24,7 @@ static void usage (char *cmd)
 	printf ("%s [options] \n", cmd);
 	printf ("Options:\n");
 	printf ("  -c <channel>: choose channel: 0=depth (default), 1=intensity\n");
+	printf ("  -o <output-format>: eg frame-%%05d.pgm. Defaults to stdout\n");
 }
 
 static void version () 
@@ -35,7 +41,12 @@ int main (int argc, char **argv) {
 	// 0=depth, 1=intensity
 	int channel = 0;
 
+	char *output_format = NULL;
+
 	int max = 0;
+	int frame_byte_count = 0;
+	int frame_count = 0;
+	char filename[2048];
 
 
 	int fd;
@@ -58,6 +69,10 @@ int main (int argc, char **argv) {
 				usage(argv[0]);
 				exit(EXIT_SUCCESS);
 
+			case 'o':
+				output_format = optarg;
+				break;
+
 			case 'v':
 				version();
 				exit(EXIT_SUCCESS);
@@ -70,18 +85,40 @@ int main (int argc, char **argv) {
 		}
 	}
 
-
+/*
 	if (channel == 0) {
 		fprintf (stdout, "P5 80 60 4095\n");
 	} else {
 		fprintf (stdout, "P5 80 60 65535\n");
 	}
+*/
+
+	FILE *out = stdout;
 
 	while (!feof(stdin)) {
 
-		fread (&v, sizeof v, 1, stdin);
+		if (frame_byte_count == 0) {
 
-		//v &= 0x0fffffff;
+			if (out != NULL) {
+				fclose(out);
+				out = NULL;
+			}
+
+			if (output_format != NULL) {
+				sprintf (filename, output_format, frame_count);
+				out = fopen(filename, "w");
+				frame_count++;
+			}			
+
+        		if (channel == 0) {
+                		fprintf (out, "P5 80 60 4095\n");
+        		} else {
+                		fprintf (out, "P5 80 60 65535\n");
+        		}
+		}
+
+		fread (&v, sizeof v, 1, stdin);
+		frame_byte_count += 4;
 
 		if (channel == 0) {
 			v >>= 16;
@@ -93,8 +130,12 @@ int main (int argc, char **argv) {
 			max = v;
 		}
 
-		fputc (v>>8,stdout);
-		fputc (v&0xff,stdout);
+		fputc (v>>8,out);
+		fputc (v&0xff,out);
+
+		if (frame_byte_count == WIDTH * HEIGHT * 4) {
+			frame_byte_count = 0;
+		}
 
 	}
 

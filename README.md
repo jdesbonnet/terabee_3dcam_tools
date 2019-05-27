@@ -25,5 +25,6 @@ Question: how to flip between close range mode (0.2 - 1.2m) and standard mode (1
 Real time dept analysis:
 
 ```
-ffmpeg -f video4linux2 -input_format yuyv422 -i /dev/video0 -c:v copy -f image2pipe - | ..etc..
+ffmpeg -f video4linux2 -input_format yuyv422 -i /dev/video1 -c:v copy -f image2pipe - | ./terabee_3dcam -o f%05d.pgm
+
 ```
