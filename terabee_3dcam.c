@@ -12,6 +12,8 @@
 #include <math.h>
 
 
+#define PROGRAM "Terabee 3Dcam utilily"
+#define VERSION "0.1.1"
 #define WIDTH 80
 #define HEIGHT 60
 
@@ -25,10 +27,12 @@ static void usage (char *cmd)
 	printf ("Options:\n");
 	printf ("  -c <channel>: choose channel: 0=depth (default), 1=intensity\n");
 	printf ("  -o <output-format>: eg frame-%%05d.pgm. Defaults to stdout\n");
+	printf ("  -t <time-format>: eg frame-%%d.pgm\n");
 }
 
 static void version () 
 {
+	printf ("%s version %s\n", PROGRAM, VERSION);
 }
 
 int main (int argc, char **argv) {
@@ -42,6 +46,7 @@ int main (int argc, char **argv) {
 	int channel = 0;
 
 	char *output_format = NULL;
+	char *time_output_format = NULL;
 
 	int max = 0;
 	int frame_byte_count = 0;
@@ -53,7 +58,7 @@ int main (int argc, char **argv) {
 
 	// Parse command line arguments. See usage() for details.
 	int c;
-	while ((c = getopt(argc, argv, "b:d:f:g:hil:o:qs:tv")) != -1) {
+	while ((c = getopt(argc, argv, "b:d:f:g:hil:o:qs:t:v")) != -1) {
 		switch(c) {
 
 			case 'l':
@@ -71,6 +76,11 @@ int main (int argc, char **argv) {
 
 			case 'o':
 				output_format = optarg;
+				break;
+
+
+			case 't':
+				time_output_format = optarg;
 				break;
 
 			case 'v':
@@ -106,9 +116,14 @@ int main (int argc, char **argv) {
 
 			if (output_format != NULL) {
 				sprintf (filename, output_format, frame_count);
-				out = fopen(filename, "w");
+				out = fopen (filename, "w");
 				frame_count++;
-			}			
+			}
+			if (time_output_format != NULL) {
+				long timestamp = 0;
+				sprintf (filename, time_output_format, timestamp);
+				out = fopen (filename, "w");
+			}
 
         		if (channel == 0) {
                 		fprintf (out, "P5 80 60 4095\n");
