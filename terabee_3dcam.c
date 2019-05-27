@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
+#include <time.h>
 
 
 #define PROGRAM "Terabee 3Dcam utilily"
@@ -53,6 +54,7 @@ int main (int argc, char **argv) {
 	int frame_count = 0;
 	char filename[2048];
 
+	struct timespec ts;
 
 	int fd;
 
@@ -95,19 +97,16 @@ int main (int argc, char **argv) {
 		}
 	}
 
-/*
-	if (channel == 0) {
-		fprintf (stdout, "P5 80 60 4095\n");
-	} else {
-		fprintf (stdout, "P5 80 60 65535\n");
-	}
-*/
 
+	// Send output to here
 	FILE *out = stdout;
 
 	while (!feof(stdin)) {
 
 		if (frame_byte_count == 0) {
+
+			// System clock timestamp of start of frame
+			clock_gettime(CLOCK_REALTIME, &ts);
 
 			if (out != NULL) {
 				fclose(out);
@@ -115,12 +114,14 @@ int main (int argc, char **argv) {
 			}
 
 			if (output_format != NULL) {
+				// TODO: buffer overflow check on filename required
 				sprintf (filename, output_format, frame_count);
 				out = fopen (filename, "w");
 				frame_count++;
 			}
 			if (time_output_format != NULL) {
-				long timestamp = 0;
+				// timestamp in ms
+				long timestamp = ts.tv_sec*1000 + (ts.tv_nsec/1000000);
 				sprintf (filename, time_output_format, timestamp);
 				out = fopen (filename, "w");
 			}
