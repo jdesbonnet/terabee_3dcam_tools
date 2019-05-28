@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <math.h>
 #include <time.h>
 
@@ -52,15 +53,15 @@ int main (int argc, char **argv) {
 	int max = 0;
 	int frame_byte_count = 0;
 	int frame_count = 0;
-	char filename[2048];
+
+	// Buffer used to constuct frame file name (output-format length + space for frame number)
+	char filename[512+64];
 
 	struct timespec ts;
 
-	int fd;
-
 	// Parse command line arguments. See usage() for details.
 	int c;
-	while ((c = getopt(argc, argv, "b:d:f:g:hil:o:qs:t:v")) != -1) {
+	while ((c = getopt(argc, argv, "b:c:d:f:g:hil:o:qs:t:v")) != -1) {
 		switch(c) {
 
 			case 'l':
@@ -78,8 +79,11 @@ int main (int argc, char **argv) {
 
 			case 'o':
 				output_format = optarg;
+				if (strlen(output_format)>512) {
+					fprintf(stderr,"error: output format too long, max 512 characters\n");
+					exit(EXIT_FAILURE);
+				}
 				break;
-
 
 			case 't':
 				time_output_format = optarg;
@@ -99,7 +103,13 @@ int main (int argc, char **argv) {
 
 
 	// Send output to here
-	FILE *out = stdout;
+	FILE *out = NULL;
+
+	// Write output to stdout if no file format specified
+	if (output_format == NULL) {
+		out = stdout;
+	}
+
 
 	while (!feof(stdin)) {
 
@@ -108,7 +118,8 @@ int main (int argc, char **argv) {
 			// System clock timestamp of start of frame
 			clock_gettime(CLOCK_REALTIME, &ts);
 
-			if (out != NULL) {
+			// If writing frames to files, close at end of each frame
+			if (out != NULL && output_format != NULL) {
 				fclose(out);
 				out = NULL;
 			}
@@ -125,7 +136,6 @@ int main (int argc, char **argv) {
 				sprintf (filename, time_output_format, timestamp);
 				out = fopen (filename, "w");
 			}
-
         		if (channel == 0) {
                 		fprintf (out, "P5 80 60 4095\n");
         		} else {
@@ -149,11 +159,12 @@ int main (int argc, char **argv) {
 		fputc (v>>8,out);
 		fputc (v&0xff,out);
 
+		// Test for end of frame
 		if (frame_byte_count == WIDTH * HEIGHT * 4) {
 			frame_byte_count = 0;
 		}
 
 	}
 
-	fprintf (stderr, "max=%d\n", max);
+	//fprintf (stderr, "max=%d\n", max);
 }
