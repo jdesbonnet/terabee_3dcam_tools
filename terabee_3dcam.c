@@ -28,6 +28,7 @@ static void usage (char *cmd)
 	printf ("%s [options] \n", cmd);
 	printf ("Options:\n");
 	printf ("  -c <channel>: choose channel: 0=depth (default), 1=intensity\n");
+	printf ("  -m : output min, mean, max to stderr\n");
 	printf ("  -o <output-format>: eg frame-%%05d.pgm. Defaults to stdout\n");
 	printf ("  -t <time-format>: eg frame-%%d.pgm\n");
 }
@@ -40,7 +41,10 @@ static void version ()
 int main (int argc, char **argv) {
 
 	uint32_t v;
+	uint64_t sum_v = 0;
 
+
+	int minmax_flag = 0;
 	int debug_level;
 
 
@@ -51,6 +55,7 @@ int main (int argc, char **argv) {
 	char *time_output_format = NULL;
 
 	int max = 0;
+	int min = 1<<31;
 	int frame_byte_count = 0;
 	int frame_count = 0;
 
@@ -61,10 +66,10 @@ int main (int argc, char **argv) {
 
 	// Parse command line arguments. See usage() for details.
 	int c;
-	while ((c = getopt(argc, argv, "b:c:d:f:g:hil:o:qs:t:v")) != -1) {
+	while ((c = getopt(argc, argv, "b:c:d:f:g:himo:qs:t:v")) != -1) {
 		switch(c) {
 
-			case 'l':
+			case 'c':
 				channel = atoi (optarg);
 				break;
 
@@ -76,9 +81,13 @@ int main (int argc, char **argv) {
 				version();
 				usage(argv[0]);
 				exit(EXIT_SUCCESS);
+			case 'm':
+				minmax_flag = 1;
+				break;
 
 			case 'o':
 				output_format = optarg;
+				// Protect against buffer overflow 
 				if (strlen(output_format)>512) {
 					fprintf(stderr,"error: output format too long, max 512 characters\n");
 					exit(EXIT_FAILURE);
@@ -152,8 +161,14 @@ int main (int argc, char **argv) {
 			v &= 0xffff;
 		}
 
+
+		sum_v += v;
+
 		if (v>max) {
 			max = v;
+		}
+		if (v<min) {
+			min = v;
 		}
 
 		fputc (v>>8,out);
@@ -166,5 +181,7 @@ int main (int argc, char **argv) {
 
 	}
 
-	//fprintf (stderr, "max=%d\n", max);
+	if (minmax_flag) {
+		fprintf (stderr, "min=%d max=%d mean=%d\n", min, max, (int)(sum_v/(WIDTH*HEIGHT)));
+	}
 }
