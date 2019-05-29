@@ -171,7 +171,7 @@ int main (int argc, char **argv) {
         			if (channel == CHANNEL_DEPTH) {
                 			fprintf (out, "P5 80 60 4095\n");
         			} else {
-                			fprintf (out, "P5 80 60 65535\n");
+                			fprintf (out, "P5 80 60 8191\n");
         			}
 			}
 		}
@@ -179,13 +179,23 @@ int main (int argc, char **argv) {
 		fread (&v, sizeof v, 1, stdin);
 		frame_in_byte_count += 4;
 
-		if (channel == CHANNEL_DEPTH) {
-			v >>= 16;
-		} 
 
-		if ( (v&0xffff0000) != 0) {
-			fprintf (stderr,"warning: stuff in upper 16 bits %x\n", (v&0xffff0000) );
+		if (frame_in_byte_count == (80*30+40)*4) {
+			fprintf (stderr,"v=%08x\n", v);
 		}
+
+		if (channel == CHANNEL_DEPTH) {
+			//v = ((v>>12)&0xff00)|(v&0xff);
+			//v = ((v>>28)<<16) | (v&0xffff);
+			v = v>>16;
+		} else if (channel == CHANNEL_INTENSITY) {
+			v = (v & 0x0fff) | ( ((v&(1<<31))==0) ? 0:(1<<12));
+		}
+
+		if (frame_in_byte_count == (80*30+40)*4) {
+			fprintf (stderr,"i=%08x\n",v);
+		}
+
 
 		v &= 0xffff;
 
