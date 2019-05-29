@@ -19,6 +19,11 @@
 #define WIDTH 80
 #define HEIGHT 60
 
+#define CHANNEL_DEPTH 0
+#define CHANNEL_INTENSITY 1
+
+#define FORMAT_RAW 1
+#define FORMAT_PGM 2
 
 /**
  * Help on how to use this utility.
@@ -28,6 +33,7 @@ static void usage (char *cmd)
 	printf ("%s [options] \n", cmd);
 	printf ("Options:\n");
 	printf ("  -c <channel>: choose channel: 0=depth (default), 1=intensity\n");
+	printf ("  -f <format> : output format: pgm | raw\n");
 	printf ("  -m : output min, mean, max to stderr\n");
 	printf ("  -o <output-format>: eg frame-%%05d.pgm. Defaults to stdout\n");
 	printf ("  -t <time-format>: eg frame-%%d.pgm\n");
@@ -45,7 +51,7 @@ int main (int argc, char **argv) {
 
 
 	int minmax_flag = 0;
-	int debug_level;
+	int debug_level = 0;
 
 
 	// 0=depth, 1=intensity
@@ -56,7 +62,10 @@ int main (int argc, char **argv) {
 
 	int max = 0;
 	int min = 1<<31;
-	int frame_byte_count = 0;
+
+	int format = 0;
+	int frame_in_byte_count = 0;
+	int frame_out_byte_count = 0;
 	int frame_count = 0;
 
 	// Buffer used to constuct frame file name (output-format length + space for frame number)
@@ -75,6 +84,14 @@ int main (int argc, char **argv) {
 
 			case 'd':
 				debug_level = atoi (optarg);
+				break;
+
+			case 'f':
+				if (strcmp("pgm",optarg)==0) {
+					format = FORMAT_PGM;
+				} else if (strcmp("raw",optarg)==0) {
+					format = FORMAT_RAW;
+				}
 				break;
 
 			case 'h':
@@ -122,10 +139,14 @@ int main (int argc, char **argv) {
 
 	while (!feof(stdin)) {
 
-		if (frame_byte_count == 0) {
+		if (frame_in_byte_count == 0) {
 
 			// System clock timestamp of start of frame
 			clock_gettime(CLOCK_REALTIME, &ts);
+
+			if (debug_level > 1) {
+				fprintf (stderr,"starting frame %d\n", frame_count);
+			}
 
 			// If writing frames to files, close at end of each frame
 			if (out != NULL && output_format != NULL) {
@@ -145,22 +166,28 @@ int main (int argc, char **argv) {
 				sprintf (filename, time_output_format, timestamp);
 				out = fopen (filename, "w");
 			}
-        		if (channel == 0) {
-                		fprintf (out, "P5 80 60 4095\n");
-        		} else {
-                		fprintf (out, "P5 80 60 65535\n");
-        		}
+
+			if (format == FORMAT_PGM) {
+        			if (channel == CHANNEL_DEPTH) {
+                			fprintf (out, "P5 80 60 4095\n");
+        			} else {
+                			fprintf (out, "P5 80 60 65535\n");
+        			}
+			}
 		}
 
 		fread (&v, sizeof v, 1, stdin);
-		frame_byte_count += 4;
+		frame_in_byte_count += 4;
 
-		if (channel == 0) {
+		if (channel == CHANNEL_DEPTH) {
 			v >>= 16;
-		} else {
-			v &= 0xffff;
+		} 
+
+		if ( (v&0xffff0000) != 0) {
+			fprintf (stderr,"warning: stuff in upper 16 bits %x\n", (v&0xffff0000) );
 		}
 
+		v &= 0xffff;
 
 		sum_v += v;
 
@@ -173,10 +200,25 @@ int main (int argc, char **argv) {
 
 		fputc (v>>8,out);
 		fputc (v&0xff,out);
+		frame_out_byte_count += 2;
 
 		// Test for end of frame
-		if (frame_byte_count == WIDTH * HEIGHT * 4) {
-			frame_byte_count = 0;
+		if (frame_in_byte_count == WIDTH * HEIGHT * 4) {
+			if (debug_level > 1) {
+				fprintf (stderr,"frame_in_byte_count=%d frame_out_byte_count=%d\n",
+					frame_in_byte_count, frame_out_byte_count);
+			}	
+			frame_in_byte_count = 0;
+			frame_out_byte_count = 0;
+			frame_count++;
+
+			if (minmax_flag) {
+				fprintf (stderr, "min=%6d max=%6d mean=%6d\n", min, max, (int)(sum_v/(WIDTH*HEIGHT)));
+				sum_v = 0;
+				max = 0;
+				min = 1<<31;
+			}
+
 		}
 
 	}

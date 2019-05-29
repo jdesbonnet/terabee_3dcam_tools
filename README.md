@@ -28,3 +28,11 @@ Real time dept analysis:
 ffmpeg -f video4linux2 -input_format yuyv422 -i /dev/video1 -c:v copy -f image2pipe - | ./terabee_3dcam -o f%05d.pgm
 
 ```
+
+Real time depth display:
+
+```
+ffmpeg -f video4linux2 -input_format yuyv422 -i /dev/video1 -c:v copy -f image2pipe - \
+ | ./terabee_3dcam -d 9 -f pgm \
+ | ffplay -f image2pipe -i pipe:.pgm
+```
