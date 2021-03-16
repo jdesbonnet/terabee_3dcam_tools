@@ -33,7 +33,7 @@ static void usage (char *cmd)
 	printf ("%s [options] \n", cmd);
 	printf ("Options:\n");
 	printf ("  -c <channel>: choose channel: 0=depth (default), 1=intensity\n");
-	printf ("  -f <format> : output format: pgm | raw\n");
+	printf ("  -f <format> : output format: pgm | raw | pxval\n");
 	printf ("  -m : output min, mean, max to stderr\n");
 	printf ("  -o <output-format>: eg frame-%%05d.pgm. Defaults to stdout\n");
 	printf ("  -t <time-format>: eg frame-%%d.pgm\n");
@@ -180,20 +180,26 @@ int main (int argc, char **argv) {
 		frame_in_byte_count += 4;
 
 
+		// first 16 bits seem to be depth
+		// next 16 bits intensity
+		// but not clear
+
+		// Print raw value of center pixel
 		if (frame_in_byte_count == (80*30+40)*4) {
-			fprintf (stderr,"v=%08x\n", v);
+			fprintf (stderr,"v=%08x %04x %04x\n", v, v>>16, v&0xffff);
 		}
 
 		if (channel == CHANNEL_DEPTH) {
-			//v = ((v>>12)&0xff00)|(v&0xff);
-			//v = ((v>>28)<<16) | (v&0xffff);
 			v = v>>16;
-		} else if (channel == CHANNEL_INTENSITY) {
-			v = (v & 0x0fff) | ( ((v&(1<<31))==0) ? 0:(1<<12));
-		}
+			v &= 0xfff;
 
-		if (frame_in_byte_count == (80*30+40)*4) {
-			fprintf (stderr,"i=%08x\n",v);
+			// Not sure how to make sense of this?!
+			//v >>= 4;
+			v &= 0xff;      // 8 bit greyscale
+		} else if (channel == CHANNEL_INTENSITY) {
+			//v = (v & 0x0fff) | ( ((v&(1<<31))==0) ? 0:(1<<12));
+			v &= 0xffff;
+			v >>= 4;
 		}
 
 
